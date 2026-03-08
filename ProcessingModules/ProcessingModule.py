@@ -20,6 +20,28 @@ class DataMode(Enum):
     MULTI = 1
     AGGREGATE = 2
 
+    @staticmethod
+    def input_dims(mode: DataMode) -> int:
+        if mode == DataMode.SINGLE:
+            return 1
+        elif mode == DataMode.MULTI:
+            return 2
+        elif mode == DataMode.AGGREGATE:
+            return 2
+
+        return 0  # Really shouldn't happen
+
+    @staticmethod
+    def output_dims(mode: DataMode) -> int:
+        if mode == DataMode.SINGLE:
+            return 1
+        elif mode == DataMode.MULTI:
+            return 2
+        elif mode == DataMode.AGGREGATE:
+            return 1
+
+        return 0
+
 
 class ShapingMode(Enum):
     """
@@ -60,15 +82,18 @@ class ProcessingModule(ABC):
 
     _mode: DataMode = DataMode.SINGLE
     _shaping_mode: ShapingMode = ShapingMode.STRICT
+    _broadcast: bool = False
 
     _cached_data: np.ndarray | None
     _cached_result: np.ndarray | None
 
     def __init__(self,
                  mode: DataMode = DataMode.SINGLE,
-                 shaping_mode: ShapingMode = ShapingMode.STRICT):
+                 shaping_mode: ShapingMode = ShapingMode.STRICT,
+                 broadcast: bool = False):
         self._mode = mode
         self._shaping_mode = shaping_mode
+        self._broadcast = broadcast
 
         _cached_data = None
         _cached_result = None
@@ -93,6 +118,11 @@ class ProcessingModule(ABC):
             raise InputValidationError(validation_error)
 
         self._cached_data = data_asarray
+
+        if data_asarray.ndim != DataMode.input_dims(self._mode) and not self._broadcast:
+            # Broadcasting not possible, but multiple input datasets
+            self.process_multiple(data_asarray)
+
         self._cached_result = self.process(data_asarray)
 
         # TODO: Result validation?
@@ -101,14 +131,19 @@ class ProcessingModule(ABC):
 
 
     @staticmethod
-    def _selective_shape(data: np.ndarray, dims: int) -> np.ndarray:
+    def _selective_shape(data: np.ndarray, *dims: int) -> np.ndarray:
         """
         Select first element along the last n dimensions
 
         :param data: ndarray containing at least the number of specified dimensions
-        :param dims: required number of dimensions
+        :param dims: required number of dimensions. If multiple, use the largest possible
         :return: ndarray with the required number of dimensions
+        :raises: ValueError if fewer dimensions available than minimum of specified dims
         """
+
+        if min(dims) < data.ndim:
+            raise ValueError(f"Attempted selective shaping for {dims} dimensions, with {data.ndim} available")
+        dims = min(data.ndim, max(dims))
 
         idx = [0] * (data.ndim - dims)
         return data[*idx]
@@ -121,26 +156,46 @@ class ProcessingModule(ABC):
         input_dims = data_asarray.ndim
 
         # Determine required input dimensions
-        required_dims = 1
-        if self._mode == DataMode.SINGLE:
-            required_dims = 1
-        elif self._mode == DataMode.MULTI:
-            required_dims = 2
+        required_dims = [DataMode.input_dims(self._mode)]
+
+        # Allow one additional dimension for numpy broadcasting
+        required_dims.extend([dim + 1
+                              for dim in required_dims
+                              if dim + 1 not in required_dims])
 
         # Validate input shape
         if self._shaping_mode == ShapingMode.STRICT and \
-            input_dims != required_dims:
+            input_dims not in required_dims:
             raise ValueError(f"Got {input_dims} dimensions, but {required_dims} required for mode STRICT.")
         elif self._shaping_mode == ShapingMode.SELECTIVE and \
-            input_dims < required_dims:
+            input_dims < min(required_dims):
             raise ValueError(f"Got {input_dims} dimensions, but at least {required_dims} required for mode SELECTIVE.")
 
         # Return shaped array
-        return self._selective_shape(data_asarray, required_dims)
+        return self._selective_shape(data_asarray, *required_dims)
 
 
     @abstractmethod
     def process(self, data: np.ndarray) -> np.ndarray:
+        """
+        Process a single dataset
+
+        :param data: validated ndarray containing input data
+        :return: processed ndarray
+        """
+
+        pass
+
+
+    @abstractmethod
+    def process_multiple(self, data: np.ndarray) -> np.ndarray:
+        """
+        Process multiple datasets. Only required if broadcasting is not possible
+
+        :param data: validated ndarray containing multiple input datasets along the first dimension
+        :return: processed ndarrays stacked along the first dimension
+        """
+
         pass
 
 
