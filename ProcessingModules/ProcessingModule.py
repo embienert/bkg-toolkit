@@ -64,7 +64,12 @@ class ProcessingModule(ABC):
     _cached_data: np.ndarray | None
     _cached_result: np.ndarray | None
 
-    def __init__(self):
+    def __init__(self,
+                 mode: DataMode = DataMode.SINGLE,
+                 shaping_mode: ShapingMode = ShapingMode.STRICT):
+        self._mode = mode
+        self._shaping_mode = shaping_mode
+
         _cached_data = None
         _cached_result = None
 
@@ -144,6 +149,16 @@ class ProcessingModule(ABC):
         if self.info and self.info.name.strip():
             return self.info.name
         return self.__class__.__name__
+
+
+    @property
+    def mode(self):
+        return self._mode
+
+
+    @property
+    def shaping_mode(self):
+        return self._shaping_mode
 
 
     def __str__(self):
