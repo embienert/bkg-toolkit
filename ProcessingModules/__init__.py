@@ -1,2 +1,1 @@
-from ProcessingModule import ProcessingModule, DataMode, ShapingMode
-import exceptions
+from ProcessingModules.base.ProcessingModuleBase import ProcessingModuleBase

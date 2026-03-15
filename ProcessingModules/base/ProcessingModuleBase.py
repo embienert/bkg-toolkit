@@ -113,7 +113,7 @@ class ProcessingModuleInfo:
         return hash(self.name + self.author)
 
 
-class ProcessingModule(ABC):
+class ProcessingModuleBase(ABC):
     info: ProcessingModuleInfo = None
 
     inputs: list[InputSpecification] = None
