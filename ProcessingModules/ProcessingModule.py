@@ -7,52 +7,88 @@ import numpy as np
 from ProcessingModules.exceptions import InputValidationError
 
 
-class DataMode(Enum):
-    """
-    Data modes wrt. input and output shape
+class InputValidationResult(Enum):
+    OK = 0
+    BROADCAST = 1
+    REQUIRE_ITERATION = 2
+    FAILED = 3
 
-    SINGLE:     1d > 1d
-    MULTI:      2d > 2d
-    AGGREGATE:  2d > 1d
-    """
-
-    SINGLE = 0
-    MULTI = 1
-    AGGREGATE = 2
-
-    @staticmethod
-    def input_dims(mode: DataMode) -> int:
-        if mode == DataMode.SINGLE:
-            return 1
-        elif mode == DataMode.MULTI:
-            return 2
-        elif mode == DataMode.AGGREGATE:
-            return 2
-
-        return 0  # Really shouldn't happen
-
-    @staticmethod
-    def output_dims(mode: DataMode) -> int:
-        if mode == DataMode.SINGLE:
-            return 1
-        elif mode == DataMode.MULTI:
-            return 2
-        elif mode == DataMode.AGGREGATE:
-            return 1
-
-        return 0
+    def is_iterable(self):
+        return self == InputValidationResult.BROADCAST or self == InputValidationResult.REQUIRE_ITERATION
 
 
-class ShapingMode(Enum):
-    """
-    Shaping modes wrt. accepted input shapes
+class InputSpecification:
+    _dimensions: int | None = None
+    _allow_broadcast: bool = False
+    _shape: tuple | None = None
 
-    STRICT:     Given data must exactly match the expected input dimensions
-    SELECTIVE:  If input dimensions exceed expected input dimensions, select first element matching the dimensions
-    """
+    def __init__(self, dimensions: int = None, shape: tuple = None, allow_broadcast: bool = False):
+        if dimensions is None and shape is None:
+            raise ValueError("Either dimensions or shape must be specified")
+        if dimensions and shape:
+            raise ValueError("Cannot specify dimensions AND shape")
 
-    STRICT = 0
-    SELECTIVE = 1
+        self._dimensions = dimensions
+        self._shape = shape
+        self._allow_broadcast = allow_broadcast
+
+
+    def validate(self, data: Iterable):
+        assert isinstance(data, Iterable), "input is non-iterable object"
+
+        data_asarray = np.array(data)
+
+        if self._dimensions:
+            return self._validate_dimensions(data_asarray)
+        if self._shape:
+            return self._validate_shape(data_asarray)
+
+        raise InputValidationError("Neither dimensions nor shape were specified")
+
+
+    def _validate_dimensions(self, data: np.ndarray) -> InputValidationResult:
+        if not self._dimensions:
+            return InputValidationResult.OK
+
+        input_dims = data.ndim
+
+        if input_dims == self._dimensions:
+            return InputValidationResult.OK
+        if input_dims == self._dimensions + 1 and \
+                self._allow_broadcast:
+            return InputValidationResult.BROADCAST
+        if input_dims == self._dimensions + 1 and \
+                not self._allow_broadcast:
+            return InputValidationResult.REQUIRE_ITERATION
+
+        return InputValidationResult.FAILED
+
+
+    def _validate_shape(self, data: np.ndarray) -> InputValidationResult:
+        if not self._shape:
+            return InputValidationResult.OK
+
+        input_shape = data.shape
+
+        if input_shape == self._shape:
+            return InputValidationResult.OK
+
+        is_one_element_subset = input_shape[1:] == self._shape
+        if is_one_element_subset and self._allow_broadcast:
+            return InputValidationResult.BROADCAST
+        if is_one_element_subset and not self._allow_broadcast:
+            return InputValidationResult.REQUIRE_ITERATION
+
+        return InputValidationResult.FAILED
+
+
+class OutputSpecification:
+    _dimensions: int | None = None
+    _shape: tuple | None = None
+
+    def __init__(self, dimensions: int = None, shape: tuple = None):
+        self._dimensions = dimensions
+        self._shape = shape
 
 
 class ProcessingModuleInfo:
@@ -78,105 +114,66 @@ class ProcessingModuleInfo:
 
 
 class ProcessingModule(ABC):
-    info: ProcessingModuleInfo
+    info: ProcessingModuleInfo = None
 
-    _mode: DataMode = DataMode.SINGLE
-    _shaping_mode: ShapingMode = ShapingMode.STRICT
-    _broadcast: bool = False
+    inputs: list[InputSpecification] = None
+    output: OutputSpecification = None
 
-    _cached_data: np.ndarray | None
-    _cached_result: np.ndarray | None
-
-    def __init__(self,
-                 mode: DataMode = DataMode.SINGLE,
-                 shaping_mode: ShapingMode = ShapingMode.STRICT,
-                 broadcast: bool = False):
-        self._mode = mode
-        self._shaping_mode = shaping_mode
-        self._broadcast = broadcast
-
+    def __init__(self):
         _cached_data = None
         _cached_result = None
 
-        self.init_settings()
-        self.init_logging()
 
 
     def init_settings(self, *args, **kwargs):
         pass
 
 
-    def init_logging(self, *args, **kwargs):
-        pass
+    def run(self, *inputs: Iterable) -> np.ndarray:
+        inputs_as_array = [np.array(data) for data in inputs]
 
-
-    def execute(self, data: Iterable) -> np.ndarray:
         # Validate input data
         try:
-            data_asarray = self._validate_data(data)
+            input_validations = self._validate_inputs(*inputs_as_array)
         except Exception as validation_error:
             raise InputValidationError(validation_error)
 
-        self._cached_data = data_asarray
-
-        if data_asarray.ndim != DataMode.input_dims(self._mode) and not self._broadcast:
-            # Broadcasting not possible, but multiple input datasets
-            self.process_multiple(data_asarray)
-
-        self._cached_result = self.process(data_asarray)
+        processing_mode = max(*input_validations)
+        if processing_mode == 0 or processing_mode == 1:
+            # Linear or broadcast
+            result = self.process(*inputs_as_array)
+        elif processing_mode == 2:
+            # iteration required
+            result = self.process_multiple(*inputs_as_array, validations=input_validations)
+        else:
+            raise InputValidationError("One or more single input validation failed")
 
         # TODO: Result validation?
-
-        return self._cached_result
-
-
-    @staticmethod
-    def _selective_shape(data: np.ndarray, *dims: int) -> np.ndarray:
-        """
-        Select first element along the last n dimensions
-
-        :param data: ndarray containing at least the number of specified dimensions
-        :param dims: required number of dimensions. If multiple, use the largest possible
-        :return: ndarray with the required number of dimensions
-        :raises: ValueError if fewer dimensions available than minimum of specified dims
-        """
-
-        if min(dims) < data.ndim:
-            raise ValueError(f"Attempted selective shaping for {dims} dimensions, with {data.ndim} available")
-        dims = min(data.ndim, max(dims))
-
-        idx = [0] * (data.ndim - dims)
-        return data[*idx]
+        return result
 
 
-    def _validate_data(self, data: Iterable) -> np.ndarray:
-        assert isinstance(data, Iterable), "input is non-iterable object"
+    def _validate_inputs(self, *inputs: np.ndarray) -> list[InputValidationResult]:
+        input_specification_map = zip(self.inputs, inputs)
 
-        data_asarray = np.array(data)
-        input_dims = data_asarray.ndim
+        validations = [specification.validate(data) for specification, data in input_specification_map]
 
-        # Determine required input dimensions
-        required_dims = [DataMode.input_dims(self._mode)]
+        # Get inputs that must be iterated
+        iterable_inputs = []
+        for input_data, validation_result in zip(inputs, validations):
+            if validation_result.is_iterable():
+                iterable_inputs.append(input_data)
 
-        # Allow one additional dimension for numpy broadcasting
-        required_dims.extend([dim + 1
-                              for dim in required_dims
-                              if dim + 1 not in required_dims])
+        # Check for size mismatch between iterable inputs
+        for idx_a in range(len(iterable_inputs)):
+            for idx_b in range(idx_a + 1, len(iterable_inputs)):
+                if len(iterable_inputs[idx_a]) != len(iterable_inputs[idx_b]):
+                    raise InputValidationError(f"Size mismatch between input {idx_a+1} and input {idx_b+1}")
 
-        # Validate input shape
-        if self._shaping_mode == ShapingMode.STRICT and \
-            input_dims not in required_dims:
-            raise ValueError(f"Got {input_dims} dimensions, but {required_dims} required for mode STRICT.")
-        elif self._shaping_mode == ShapingMode.SELECTIVE and \
-            input_dims < min(required_dims):
-            raise ValueError(f"Got {input_dims} dimensions, but at least {required_dims} required for mode SELECTIVE.")
-
-        # Return shaped array
-        return self._selective_shape(data_asarray, *required_dims)
+        return validations
 
 
     @abstractmethod
-    def process(self, data: np.ndarray) -> np.ndarray:
+    def process(self, *data: np.ndarray) -> np.ndarray:
         """
         Process a single dataset
 
@@ -188,11 +185,12 @@ class ProcessingModule(ABC):
 
 
     @abstractmethod
-    def process_multiple(self, data: np.ndarray) -> np.ndarray:
+    def process_multiple(self, *data: np.ndarray, validations: list[InputValidationResult] = None) -> np.ndarray:
         """
         Process multiple datasets. Only required if broadcasting is not possible
 
         :param data: validated ndarray containing multiple input datasets along the first dimension
+        :param validations: list of validation results to determine which arguments must be stacked to enable iteration
         :return: processed ndarrays stacked along the first dimension
         """
 
