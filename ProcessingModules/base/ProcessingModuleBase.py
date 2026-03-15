@@ -187,7 +187,6 @@ class ProcessingModuleBase(ABC):
         pass
 
 
-    @abstractmethod
     def process_multiple(self, *data: np.ndarray, validations: list[InputValidationResult] = None) -> np.ndarray:
         """
         Process multiple datasets. Only required if broadcasting is not possible
