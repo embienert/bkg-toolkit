@@ -232,16 +232,6 @@ class ProcessingModule(ABC):
         return self.__class__.__name__
 
 
-    @property
-    def mode(self):
-        return self._mode
-
-
-    @property
-    def shaping_mode(self):
-        return self._shaping_mode
-
-
     def __str__(self):
         return f"Module({self.name})"
 
