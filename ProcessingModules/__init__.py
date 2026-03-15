@@ -1,1 +1,1 @@
-from ProcessingModules.base.ProcessingModuleBase import ProcessingModuleBase
+from .base import ProcessingModuleBase, ProcessingModuleInfo, InputSpecification, OutputSpecification
