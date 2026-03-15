@@ -110,7 +110,7 @@ class ProcessingModuleInfo:
         return self.__str__()
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.name + self.author)
 
 
 class ProcessingModule(ABC):
@@ -124,9 +124,12 @@ class ProcessingModule(ABC):
         _cached_result = None
 
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
 
-    def init_settings(self, *args, **kwargs):
-        pass
+        assert cls.info is not None, "info must be specified"
+        assert cls.inputs is not None, "inputs must be specified"
+        assert cls.output is not None, "output must be specified"
 
 
     def run(self, *inputs: Iterable) -> np.ndarray:
@@ -215,7 +218,7 @@ class ProcessingModule(ABC):
 
 
     def __str__(self):
-        return f"Module({self.name}, mode={self._mode.name}, shaping={self._shaping_mode.name})"
+        return f"Module({self.name})"
 
 
     def __repr__(self):
@@ -223,4 +226,7 @@ class ProcessingModule(ABC):
 
 
     def __hash__(self):
+        if self.info:
+            return hash(self.info)
+
         return hash(self.name)
