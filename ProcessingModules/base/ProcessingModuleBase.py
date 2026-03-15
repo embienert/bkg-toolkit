@@ -16,6 +16,24 @@ class InputValidationResult(Enum):
     def is_iterable(self):
         return self == InputValidationResult.BROADCAST or self == InputValidationResult.REQUIRE_ITERATION
 
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __eq__(self, other):
+        if isinstance(other, InputValidationResult):
+            return self.value == other.value
+
+        return self.value == other
+
 
 class InputSpecification:
     _dimensions: int | None = None
@@ -142,7 +160,7 @@ class ProcessingModuleBase(ABC):
             raise InputValidationError(validation_error)
 
         processing_mode = max(*input_validations)
-        if processing_mode == 0 or processing_mode == 1:
+        if processing_mode == InputValidationResult.OK or processing_mode == InputValidationResult.BROADCAST:
             # Linear or broadcast
             result = self.process(*inputs_as_array)
         elif processing_mode == 2:
@@ -156,6 +174,9 @@ class ProcessingModuleBase(ABC):
 
 
     def _validate_inputs(self, *inputs: np.ndarray) -> list[InputValidationResult]:
+        if len(inputs) != len(self.inputs):
+            raise InputValidationError(f"Expected {len(self.inputs)} inputs, but got {len(inputs)}")
+
         input_specification_map = zip(self.inputs, inputs)
 
         validations = [specification.validate(data) for specification, data in input_specification_map]
