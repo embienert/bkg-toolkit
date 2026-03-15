@@ -155,12 +155,12 @@ class ProcessingModuleBase(ABC):
         processing_mode = max(*input_validations)
         if processing_mode == InputValidationResult.OK:
             # Linear
-            result = self.process(*inputs_as_array)
+            result = self._process(*inputs_as_array)
         elif processing_mode == InputValidationResult.REQUIRE_ITERATION and self.allow_broadcast:
-            result = self.process(*inputs_as_array)
+            result = self._process(*inputs_as_array)
         elif processing_mode == InputValidationResult.REQUIRE_ITERATION:
             # iteration required
-            result = self.process_multiple(*inputs_as_array, validations=input_validations)
+            result = self._process_multiple(*inputs_as_array, validations=input_validations)
         else:
             raise InputValidationError("One or more single input validation failed")
 
@@ -192,7 +192,7 @@ class ProcessingModuleBase(ABC):
 
 
     @abstractmethod
-    def process(self, *data: np.ndarray) -> np.ndarray:
+    def _process(self, *data: np.ndarray) -> np.ndarray:
         """
         Process a single dataset
 
@@ -203,7 +203,7 @@ class ProcessingModuleBase(ABC):
         pass
 
 
-    def process_multiple(self, *data: np.ndarray, validations: list[InputValidationResult] = None) -> np.ndarray:
+    def _process_multiple(self, *data: np.ndarray, validations: list[InputValidationResult] = None) -> np.ndarray:
         """
         Process multiple datasets. Only required if broadcasting is not possible
 
@@ -219,7 +219,7 @@ class ProcessingModuleBase(ABC):
 
         results = []
         for arg_set in args:
-            results.append(self.process(*arg_set))
+            results.append(self._process(*arg_set))
 
         return np.array(results)
 
