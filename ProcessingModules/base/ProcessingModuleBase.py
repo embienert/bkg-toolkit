@@ -9,12 +9,11 @@ from ProcessingModules.exceptions import InputValidationError
 
 class InputValidationResult(Enum):
     OK = 0
-    BROADCAST = 1
     REQUIRE_ITERATION = 2
     FAILED = 3
 
     def is_iterable(self):
-        return self == InputValidationResult.BROADCAST or self == InputValidationResult.REQUIRE_ITERATION
+        return self == InputValidationResult.REQUIRE_ITERATION
 
     def __gt__(self, other):
         return self.value > other.value
@@ -37,10 +36,9 @@ class InputValidationResult(Enum):
 
 class InputSpecification:
     _dimensions: int | None = None
-    _allow_broadcast: bool = False
     _shape: tuple | None = None
 
-    def __init__(self, dimensions: int = None, shape: tuple = None, allow_broadcast: bool = False):
+    def __init__(self, dimensions: int = None, shape: tuple = None):
         if dimensions is None and shape is None:
             raise ValueError("Either dimensions or shape must be specified")
         if dimensions and shape:
@@ -48,7 +46,6 @@ class InputSpecification:
 
         self._dimensions = dimensions
         self._shape = shape
-        self._allow_broadcast = allow_broadcast
 
 
     def validate(self, data: Iterable):
@@ -72,11 +69,7 @@ class InputSpecification:
 
         if input_dims == self._dimensions:
             return InputValidationResult.OK
-        if input_dims == self._dimensions + 1 and \
-                self._allow_broadcast:
-            return InputValidationResult.BROADCAST
-        if input_dims == self._dimensions + 1 and \
-                not self._allow_broadcast:
+        if input_dims == self._dimensions + 1:
             return InputValidationResult.REQUIRE_ITERATION
 
         return InputValidationResult.FAILED
@@ -92,9 +85,7 @@ class InputSpecification:
             return InputValidationResult.OK
 
         is_one_element_subset = input_shape[1:] == self._shape
-        if is_one_element_subset and self._allow_broadcast:
-            return InputValidationResult.BROADCAST
-        if is_one_element_subset and not self._allow_broadcast:
+        if is_one_element_subset:
             return InputValidationResult.REQUIRE_ITERATION
 
         return InputValidationResult.FAILED
@@ -137,6 +128,8 @@ class ProcessingModuleBase(ABC):
     inputs: list[InputSpecification] = None
     output: OutputSpecification = None
 
+    allow_broadcast: bool = False
+
     def __init__(self):
         _cached_data = None
         _cached_result = None
@@ -160,10 +153,12 @@ class ProcessingModuleBase(ABC):
             raise InputValidationError(validation_error)
 
         processing_mode = max(*input_validations)
-        if processing_mode == InputValidationResult.OK or processing_mode == InputValidationResult.BROADCAST:
-            # Linear or broadcast
+        if processing_mode == InputValidationResult.OK:
+            # Linear
             result = self.process(*inputs_as_array)
-        elif processing_mode == 2:
+        elif processing_mode == InputValidationResult.REQUIRE_ITERATION and self.allow_broadcast:
+            result = self.process(*inputs_as_array)
+        elif processing_mode == InputValidationResult.REQUIRE_ITERATION:
             # iteration required
             result = self.process_multiple(*inputs_as_array, validations=input_validations)
         else:
@@ -240,7 +235,7 @@ class ProcessingModuleBase(ABC):
             if validation.is_iterable():
                 arg_stack.append(arg)
             else:
-                arg_stack.append(np.full((length, arg.shape), arg))
+                arg_stack.append(np.full((length, *arg.shape), arg))
 
         return list(zip(*arg_stack))
 
