@@ -197,7 +197,32 @@ class ProcessingModule(ABC):
         :return: processed ndarrays stacked along the first dimension
         """
 
-        pass
+        # build args
+        args = self._stack_args(*data, validations=validations)
+
+        # TODO: Check for more efficient/elegant implementation
+
+        results = []
+        for arg_set in args:
+            results.append(self.process(*arg_set))
+
+        return np.array(results)
+
+
+    @staticmethod
+    def _stack_args(*args: np.ndarray, validations: list[InputValidationResult]) -> list[np.ndarray]:
+        assert len(args) == len(validations), "Number of arguments does not match the number of validations"
+
+        arg_stack = []
+
+        length = max([len(arg) for (arg, validation) in zip(args, validations) if validation.is_iterable()])
+        for (arg, validation) in zip(args, validations):
+            if validation.is_iterable():
+                arg_stack.append(arg)
+            else:
+                arg_stack.append(np.full((length, arg.shape), arg))
+
+        return list(zip(*arg_stack))
 
 
     @property
