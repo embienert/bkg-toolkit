@@ -1,13 +1,11 @@
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Iterable
-
 import numpy as np
 
+from Settings import Settings
 from .exceptions import InputValidationError
 from .specification import ProcessingModuleSpecification, InputSpecification, OutputSpecification
-
-
+from .validation import InputValidationResult, validate
 
 
 class ProcessingModuleBase(ABC):
@@ -16,12 +14,15 @@ class ProcessingModuleBase(ABC):
     inputs: list[InputSpecification] = None
     output: OutputSpecification = None
 
+    configuration: Settings | None = None
+
     allow_broadcast: bool = False
 
-    def __init__(self):
+    def __init__(self, settings: dict):
         _cached_data = None
         _cached_result = None
 
+        self._init_settings(settings)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -29,6 +30,12 @@ class ProcessingModuleBase(ABC):
         assert cls.info is not None, "info must be specified"
         assert cls.inputs is not None, "inputs must be specified"
         assert cls.output is not None, "output must be specified"
+
+    def _init_settings(self, settings: dict):
+        if self.configuration is None:
+            return
+
+        self.configuration.load(settings)
 
 
     def run(self, *inputs: Iterable) -> np.ndarray:
@@ -62,7 +69,7 @@ class ProcessingModuleBase(ABC):
 
         input_specification_map = zip(self.inputs, inputs)
 
-        validations = [specification.validate(data) for specification, data in input_specification_map]
+        validations = [validate(specification, data) for specification, data in input_specification_map]
 
         # Get inputs that must be iterated
         iterable_inputs = []
