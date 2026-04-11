@@ -215,7 +215,7 @@ class ProcessingModuleBase(ABC):
         # build args
         args = self._stack_args(*data, validations=validations)
 
-        # TODO: Check for more efficient/elegant implementation
+        # TODO: Implement more efficiently (multi-threading, ...)
 
         results = []
         for arg_set in args:
@@ -224,8 +224,10 @@ class ProcessingModuleBase(ABC):
         return np.array(results)
 
 
-    @staticmethod
-    def _stack_args(*args: np.ndarray, validations: list[InputValidationResult]) -> list[np.ndarray]:
+    def _stack_args(self, *args: np.ndarray, validations: list[InputValidationResult] = None) -> list[np.ndarray]:
+        if validations is None:
+            validations = self._validate_inputs(*args)
+
         assert len(args) == len(validations), "Number of arguments does not match the number of validations"
 
         arg_stack = []
