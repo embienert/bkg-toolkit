@@ -16,6 +16,5 @@ class ProcessingConfiguration:
     def modules(self, value: Iterable[ProcessingModuleBase]):
         self._modules = list(value)
 
-
     def __init__(self, *modules: ProcessingModuleBase):
         self._modules = list(modules)

@@ -11,7 +11,6 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
     __getattr__ = dict.get
     __delattr__ = dict.__delitem__
 
-
     def __init__(self, values: _CONSTRUCTION_TYPE = None, **kwargs):
         all_values = {
             **self._unpack(values),
@@ -38,10 +37,10 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
             elif isinstance(value, Setting):
                 unpacked_values[key] = value
             else:
-                raise ValueError(f"Encountered unexpected setting type '{type(value)}' while constructing Settings. Supported types are '{Setting.__name__}' and '{Settings.__name__}'.")
+                raise ValueError(f"Encountered unexpected setting type '{type(value)}' while constructing Settings. "
+                                 f"Supported types are '{Setting.__name__}' and '{Settings.__name__}'.")
 
         return unpacked_values
-
 
     def load(self, values: _VALUE_TYPE):
         keys = self.keys()
@@ -57,7 +56,8 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
                 setting.load(value)
             else:
                 # Really shouldn't happen, but you know how it is...
-                raise ValueError(f"Encountered unexpected setting type '{type(setting)}' with key {key} while loading settings.")
+                raise ValueError(f"Encountered unexpected setting type '{type(setting)}' with key {key} while loading "
+                                 f"settings.")
 
     def dump(self) -> _VALUE_TYPE:
         output = {}

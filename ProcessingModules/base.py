@@ -37,7 +37,6 @@ class ProcessingModuleBase(ABC):
 
         self.configuration.load(settings)
 
-
     def run(self, *inputs: Iterable) -> np.ndarray:
         inputs_as_array = [np.array(data) for data in inputs]
 
@@ -62,7 +61,6 @@ class ProcessingModuleBase(ABC):
         # TODO: Result validation?
         return result
 
-
     def _validate_inputs(self, *inputs: np.ndarray) -> list[InputValidationResult]:
         if len(inputs) != len(self.inputs):
             raise InputValidationError(f"Expected {len(self.inputs)} inputs, but got {len(inputs)}")
@@ -85,7 +83,6 @@ class ProcessingModuleBase(ABC):
 
         return validations
 
-
     @abstractmethod
     def _process(self, *data: np.ndarray) -> np.ndarray:
         """
@@ -96,7 +93,6 @@ class ProcessingModuleBase(ABC):
         """
 
         pass
-
 
     def _process_multiple(self, *data: np.ndarray, validations: list[InputValidationResult] = None) -> np.ndarray:
         """
@@ -118,7 +114,6 @@ class ProcessingModuleBase(ABC):
 
         return np.array(results)
 
-
     def _stack_args(self, *args: np.ndarray, validations: list[InputValidationResult] = None) -> list[np.ndarray]:
         if validations is None:
             validations = self._validate_inputs(*args)
@@ -136,21 +131,17 @@ class ProcessingModuleBase(ABC):
 
         return list(zip(*arg_stack))
 
-
     @property
     def name(self):
         if self.info and self.info.name.strip():
             return self.info.name
         return self.__class__.__name__
 
-
     def __str__(self):
         return f"Module({self.name})"
 
-
     def __repr__(self):
         return self.__str__()
-
 
     def __hash__(self):
         if self.info:
