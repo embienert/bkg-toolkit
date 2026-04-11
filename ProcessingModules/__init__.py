@@ -1,1 +1,3 @@
-from .base import ProcessingModuleBase, ProcessingModuleInfo, InputSpecification, OutputSpecification
+from .base import ProcessingModuleBase
+from .specification import ProcessingModuleSpecification, InputSpecification, OutputSpecification
+from .validation import validate

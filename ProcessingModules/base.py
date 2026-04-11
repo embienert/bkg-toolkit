@@ -4,126 +4,14 @@ from typing import Iterable
 
 import numpy as np
 
-from ProcessingModules.exceptions import InputValidationError
+from .exceptions import InputValidationError
+from .specification import ProcessingModuleSpecification, InputSpecification, OutputSpecification
 
 
-class InputValidationResult(Enum):
-    OK = 0
-    REQUIRE_ITERATION = 2
-    FAILED = 3
-
-    def is_iterable(self):
-        return self == InputValidationResult.REQUIRE_ITERATION
-
-    def __gt__(self, other):
-        return self.value > other.value
-
-    def __lt__(self, other):
-        return self.value < other.value
-
-    def __ge__(self, other):
-        return self.value >= other.value
-
-    def __le__(self, other):
-        return self.value <= other.value
-
-    def __eq__(self, other):
-        if isinstance(other, InputValidationResult):
-            return self.value == other.value
-
-        return self.value == other
-
-
-class InputSpecification:
-    _dimensions: int | None = None
-    _shape: tuple | None = None
-
-    def __init__(self, dimensions: int = None, shape: tuple = None):
-        if dimensions is None and shape is None:
-            raise ValueError("Either dimensions or shape must be specified")
-        if dimensions and shape:
-            raise ValueError("Cannot specify dimensions AND shape")
-
-        self._dimensions = dimensions
-        self._shape = shape
-
-
-    def validate(self, data: Iterable):
-        assert isinstance(data, Iterable), "input is non-iterable object"
-
-        data_asarray = np.array(data)
-
-        if self._dimensions:
-            return self._validate_dimensions(data_asarray)
-        if self._shape:
-            return self._validate_shape(data_asarray)
-
-        raise InputValidationError("Neither dimensions nor shape were specified")
-
-
-    def _validate_dimensions(self, data: np.ndarray) -> InputValidationResult:
-        if not self._dimensions:
-            return InputValidationResult.OK
-
-        input_dims = data.ndim
-
-        if input_dims == self._dimensions:
-            return InputValidationResult.OK
-        if input_dims == self._dimensions + 1:
-            return InputValidationResult.REQUIRE_ITERATION
-
-        return InputValidationResult.FAILED
-
-
-    def _validate_shape(self, data: np.ndarray) -> InputValidationResult:
-        if not self._shape:
-            return InputValidationResult.OK
-
-        input_shape = data.shape
-
-        if input_shape == self._shape:
-            return InputValidationResult.OK
-
-        is_one_element_subset = input_shape[1:] == self._shape
-        if is_one_element_subset:
-            return InputValidationResult.REQUIRE_ITERATION
-
-        return InputValidationResult.FAILED
-
-
-class OutputSpecification:
-    _dimensions: int | None = None
-    _shape: tuple | None = None
-
-    def __init__(self, dimensions: int = None, shape: tuple = None):
-        self._dimensions = dimensions
-        self._shape = shape
-
-
-class ProcessingModuleInfo:
-    name: str = ""
-    description: str = ""
-    author: str = ""
-    version: str = ""
-
-    def __init__(self, name: str, description: str = "", author: str = "", version: str = ""):
-        self.name = name
-        self.description = description
-        self.author = author
-        self.version = version
-
-    def __str__(self):
-        return f"ProcessingModuleInfo(name={self.name}, author={self.author}, version={self.version})"
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __hash__(self):
-        return hash(self.name + self.author)
 
 
 class ProcessingModuleBase(ABC):
-    info: ProcessingModuleInfo = None
+    info: ProcessingModuleSpecification = None
 
     inputs: list[InputSpecification] = None
     output: OutputSpecification = None

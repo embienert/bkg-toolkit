@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from ProcessingModules import ProcessingModuleBase, DataMode
+from ProcessingModules import ProcessingModuleBase
 
 
 class ProcessingConfiguration:
