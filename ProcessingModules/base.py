@@ -2,17 +2,39 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 import numpy as np
 
+from DataSpecification.IOSpecification import IOSpecification
 from Settings import Settings
 from .exceptions import InputValidationError
-from .specification import ProcessingModuleSpecification, InputSpecification, OutputSpecification
 from .validation import InputValidationResult, validate
+
+
+class ProcessingModuleSpecification:
+    name: str = ""
+    description: str = ""
+    author: str = ""
+    version: str = ""
+
+    def __init__(self, name: str, description: str = "", author: str = "", version: str = ""):
+        self.name = name
+        self.description = description
+        self.author = author
+        self.version = version
+
+    def __str__(self):
+        return f"ProcessingModuleInfo(name={self.name}, author={self.author}, version={self.version})"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __hash__(self):
+        return hash(self.name + self.author)
 
 
 class ProcessingModuleBase(ABC):
     info: ProcessingModuleSpecification = None
 
-    inputs: list[InputSpecification] = None
-    output: OutputSpecification = None
+    inputs: list[IOSpecification] = None
+    output: IOSpecification = None
 
     configuration: Settings | None = None
 

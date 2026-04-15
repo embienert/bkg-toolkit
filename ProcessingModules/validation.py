@@ -2,8 +2,8 @@ from enum import Enum
 from typing import Iterable
 import numpy as np
 
+from DataSpecification.IOSpecification import IOSpecification
 from .exceptions import InputValidationError
-from .specification import InputSpecification
 
 
 class InputValidationResult(Enum):
@@ -33,7 +33,7 @@ class InputValidationResult(Enum):
         return self.value == other
 
 
-def validate(input_specification: InputSpecification, data: Iterable):
+def validate(input_specification: IOSpecification, data: Iterable):
     assert isinstance(data, Iterable), "input is non-iterable object"
 
     data_asarray = np.array(data)
