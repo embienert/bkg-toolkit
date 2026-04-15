@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Iterable, Any
 import numpy as np
 
 from BKGToolkit.DataSpecification import IOSpecification
@@ -44,7 +44,7 @@ class ProcessingModule(ABC):
         _cached_data = None
         _cached_result = None
 
-        self._init_settings(settings)
+        self.load_settings(settings)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -53,13 +53,13 @@ class ProcessingModule(ABC):
         assert cls.inputs is not None, "inputs must be specified"
         assert cls.outputs is not None, "output must be specified"
 
-    def _init_settings(self, settings: dict):
+    def load_settings(self, settings: dict):
         if self.configuration is None:
             return
 
         self.configuration.load(settings)
 
-    def run(self, *inputs: Iterable) -> np.ndarray:
+    def run(self, *inputs: Iterable) -> list[Any] | list[Iterable[Any]]:
         inputs_as_array = [np.array(data) for data in inputs]
 
         # Validate input data
@@ -106,7 +106,7 @@ class ProcessingModule(ABC):
         return validations
 
     @abstractmethod
-    def _process(self, *data: np.ndarray) -> np.ndarray:
+    def _process(self, *data: np.ndarray) -> list[Any]:
         """
         Process a single dataset
 
@@ -116,7 +116,7 @@ class ProcessingModule(ABC):
 
         pass
 
-    def _process_multiple(self, *data: np.ndarray, validations: list[IOValidationResult] = None) -> np.ndarray:
+    def _process_multiple(self, *data: np.ndarray, validations: list[IOValidationResult] = None) -> list[Iterable[Any]]:
         """
         Process multiple datasets. Only required if broadcasting is not possible
 
@@ -128,13 +128,11 @@ class ProcessingModule(ABC):
         # build args
         args = self._stack_args(*data, validations=validations)
 
-        # TODO: Implement more efficiently (multi-threading, ...)
-
         results = []
         for arg_set in args:
             results.append(self._process(*arg_set))
 
-        return np.array(results)
+        return list(zip(*results))
 
     def _stack_args(self, *args: np.ndarray, validations: list[IOValidationResult] = None) -> list[np.ndarray]:
         if validations is None:
