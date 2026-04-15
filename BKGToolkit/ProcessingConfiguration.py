@@ -53,10 +53,21 @@ class ProcessingTree:
     def build_processing_tree(self, configuration: ProcessingConfiguration):
         graph = DiGraph()
 
+        module_nodes: dict[ProcessingModule, ProcessingNode] = {}
+
         for module in configuration.modules:
             requirements = [forwarder for forwarder in configuration.forwarders if forwarder.dst_module == module]
             requirements.sort(key=lambda forwarder: forwarder.dst_input_idx)
-            graph.add_node(ProcessingNode(module, requirements))
+
+            node = ProcessingNode(module, requirements)
+            graph.add_node(node)
+            module_nodes[module] = node
+
+        for forwarder in configuration.forwarders:
+            graph.add_edge(
+                module_nodes[forwarder.src_module],
+                module_nodes[forwarder.dst_module]
+            )
 
         if not is_directed_acyclic_graph(graph):
             cycle = find_cycle(graph)
