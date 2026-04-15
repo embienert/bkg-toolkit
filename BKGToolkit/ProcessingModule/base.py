@@ -5,7 +5,7 @@ import numpy as np
 from BKGToolkit.DataSpecification import IOSpecification
 from BKGToolkit.Settings import Settings
 from BKGToolkit.exceptions import IOValidationError
-from BKGToolkit.DataSpecification.validation import InputValidationResult, validate
+from BKGToolkit.DataSpecification.validation import IOValidationResult, validate_data
 
 
 class ProcessingModuleSpecification:
@@ -69,12 +69,12 @@ class ProcessingModule(ABC):
             raise IOValidationError(validation_error)
 
         processing_mode = max(*input_validations)
-        if processing_mode == InputValidationResult.OK:
+        if processing_mode == IOValidationResult.OK:
             # Linear
             result = self._process(*inputs_as_array)
-        elif processing_mode == InputValidationResult.REQUIRE_ITERATION and self.allow_broadcast:
+        elif processing_mode == IOValidationResult.REQUIRE_ITERATION and self.allow_broadcast:
             result = self._process(*inputs_as_array)
-        elif processing_mode == InputValidationResult.REQUIRE_ITERATION:
+        elif processing_mode == IOValidationResult.REQUIRE_ITERATION:
             # iteration required
             result = self._process_multiple(*inputs_as_array, validations=input_validations)
         else:
@@ -83,13 +83,13 @@ class ProcessingModule(ABC):
         # TODO: Result validation?
         return result
 
-    def _validate_inputs(self, *inputs: np.ndarray) -> list[InputValidationResult]:
+    def _validate_inputs(self, *inputs: np.ndarray) -> list[IOValidationResult]:
         if len(inputs) != len(self.inputs):
             raise IOValidationError(f"Expected {len(self.inputs)} inputs, but got {len(inputs)}")
 
         input_specification_map = zip(self.inputs, inputs)
 
-        validations = [validate(specification, data) for specification, data in input_specification_map]
+        validations = [validate_data(specification, data) for specification, data in input_specification_map]
 
         # Get inputs that must be iterated
         iterable_inputs = []
@@ -116,7 +116,7 @@ class ProcessingModule(ABC):
 
         pass
 
-    def _process_multiple(self, *data: np.ndarray, validations: list[InputValidationResult] = None) -> np.ndarray:
+    def _process_multiple(self, *data: np.ndarray, validations: list[IOValidationResult] = None) -> np.ndarray:
         """
         Process multiple datasets. Only required if broadcasting is not possible
 
@@ -136,7 +136,7 @@ class ProcessingModule(ABC):
 
         return np.array(results)
 
-    def _stack_args(self, *args: np.ndarray, validations: list[InputValidationResult] = None) -> list[np.ndarray]:
+    def _stack_args(self, *args: np.ndarray, validations: list[IOValidationResult] = None) -> list[np.ndarray]:
         if validations is None:
             validations = self._validate_inputs(*args)
 
