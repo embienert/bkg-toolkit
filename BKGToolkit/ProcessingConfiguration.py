@@ -105,8 +105,9 @@ class ProcessingConfiguration:
     def forwarders(self, value: Iterable[ForwardSpecification]):
         self._forwarders = list(value)
 
-    def __init__(self, *modules: ProcessingModule):
+    def __init__(self, modules: Iterable[ProcessingModule], forwarders: Iterable[ForwardSpecification]):
         self._modules = list(modules)
+        self._forwarders = list(forwarders)
 
     def validate(self):
         # Check if all required module inputs are forwarded
