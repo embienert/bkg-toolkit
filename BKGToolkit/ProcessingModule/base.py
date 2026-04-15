@@ -5,7 +5,7 @@ import numpy as np
 from BKGToolkit.DataSpecification import IOSpecification
 from BKGToolkit.Settings import Settings
 from BKGToolkit.exceptions import IOValidationError
-from .validation import InputValidationResult, validate
+from BKGToolkit.DataSpecification.validation import InputValidationResult, validate
 
 
 class ProcessingModuleSpecification:
