@@ -34,7 +34,7 @@ class ProcessingModule(ABC):
     info: ProcessingModuleSpecification = None
 
     inputs: list[IOSpecification] = None
-    output: list[IOSpecification] = None
+    outputs: list[IOSpecification] = None
 
     configuration: Settings | None = None
 
@@ -51,7 +51,7 @@ class ProcessingModule(ABC):
 
         assert cls.info is not None, "info must be specified"
         assert cls.inputs is not None, "inputs must be specified"
-        assert cls.output is not None, "output must be specified"
+        assert cls.outputs is not None, "output must be specified"
 
     def _init_settings(self, settings: dict):
         if self.configuration is None:
