@@ -2,8 +2,8 @@ from enum import Enum
 from typing import Iterable
 import numpy as np
 
-from DataSpecification.IOSpecification import IOSpecification
-from .exceptions import InputValidationError
+from BKGToolkit.DataSpecification import IOSpecification
+from BKGToolkit.exceptions import InputValidationError
 
 
 class InputValidationResult(Enum):

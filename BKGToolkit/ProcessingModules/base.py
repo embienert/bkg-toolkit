@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Iterable
 import numpy as np
 
-from DataSpecification.IOSpecification import IOSpecification
-from Settings import Settings
-from .exceptions import InputValidationError
+from BKGToolkit.DataSpecification import IOSpecification
+from BKGToolkit.Settings import Settings
+from BKGToolkit.exceptions import InputValidationError
 from .validation import InputValidationResult, validate
 
 
@@ -34,7 +34,7 @@ class ProcessingModuleBase(ABC):
     info: ProcessingModuleSpecification = None
 
     inputs: list[IOSpecification] = None
-    output: IOSpecification = None
+    output: list[IOSpecification] = None
 
     configuration: Settings | None = None
 
