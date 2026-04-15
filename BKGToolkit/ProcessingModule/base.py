@@ -173,7 +173,4 @@ class ProcessingModule(ABC):
         return self.__str__()
 
     def __hash__(self):
-        if self.info:
-            return hash((self.info, self._instance_id))
-
-        return hash(self.name)
+        return hash(self._instance_id)
