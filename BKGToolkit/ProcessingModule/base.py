@@ -30,7 +30,7 @@ class ProcessingModuleSpecification:
         return hash(self.name + self.author)
 
 
-class ProcessingModuleBase(ABC):
+class ProcessingModule(ABC):
     info: ProcessingModuleSpecification = None
 
     inputs: list[IOSpecification] = None
