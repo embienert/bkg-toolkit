@@ -1,5 +1,5 @@
 from typing import Iterable
-from networkx import DiGraph, is_directed_acyclic_graph, find_cycle, isolates, topological_sort, line_graph
+from networkx import DiGraph, is_directed_acyclic_graph, find_cycle, isolates, topological_sort
 
 from BKGToolkit.DataSpecification.ForwardSpecification import ForwardSpecification
 from BKGToolkit.ProcessingModule import ProcessingModule
@@ -36,7 +36,9 @@ class ProcessingTree:
         return self._results
 
     def __init__(self, configuration: ProcessingConfiguration):
-        # No validation happens here - Everything in this class assumes that the configuration has been validated
+        configuration.validate()
+
+        # No validation happens here - Everything from now on assumes that the configuration has been validated
         self.build_processing_tree(configuration)
 
     @staticmethod
@@ -49,7 +51,7 @@ class ProcessingTree:
         return cycle_str
 
     def build_processing_tree(self, configuration: ProcessingConfiguration):
-        graph = DiGraph[ProcessingNode]()
+        graph = DiGraph()
 
         for module in configuration.modules:
             requirements = [forwarder for forwarder in configuration.forwarders if forwarder.dst_module == module]
@@ -64,7 +66,9 @@ class ProcessingTree:
 
         # Clean up isolated nodes (there shouldn't be any)
         isolated = list(isolates(graph))
-        graph.remove_nodes_from(isolated)
+        if len(isolated) != len(graph.nodes):
+            # only remove isolates if there are other nodes
+            graph.remove_nodes_from(isolated)
 
         self._graph = graph
 

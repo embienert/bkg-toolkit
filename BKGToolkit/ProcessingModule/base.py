@@ -31,6 +31,9 @@ class ProcessingModuleSpecification:
 
 
 class ProcessingModule(ABC):
+    __instance_count: int = 0
+    _instance_id: int = 0
+
     info: ProcessingModuleSpecification = None
 
     inputs: list[IOSpecification] = None
@@ -40,7 +43,10 @@ class ProcessingModule(ABC):
 
     allow_broadcast: bool = False
 
-    def __init__(self, settings: dict):
+    def __init__(self, settings: dict = None):
+        self._instance_id = ProcessingModule.__instance_count
+        ProcessingModule.__instance_count += 1
+
         _cached_data = None
         _cached_result = None
 
@@ -54,6 +60,9 @@ class ProcessingModule(ABC):
         assert cls.outputs is not None, "output must be specified"
 
     def load_settings(self, settings: dict):
+        if settings is None:
+            return
+
         if self.configuration is None:
             return
 
@@ -68,7 +77,7 @@ class ProcessingModule(ABC):
         except Exception as validation_error:
             raise IOValidationError(validation_error)
 
-        processing_mode = max(*input_validations)
+        processing_mode = max([IOValidationResult.OK, *input_validations])
         if processing_mode == IOValidationResult.OK:
             # Linear
             result = self._process(*inputs_as_array)
@@ -158,13 +167,13 @@ class ProcessingModule(ABC):
         return self.__class__.__name__
 
     def __str__(self):
-        return f"Module({self.name})"
+        return f"Module({self._instance_id}, {self.name})"
 
     def __repr__(self):
         return self.__str__()
 
     def __hash__(self):
         if self.info:
-            return hash(self.info)
+            return hash((self.info, self._instance_id))
 
         return hash(self.name)
