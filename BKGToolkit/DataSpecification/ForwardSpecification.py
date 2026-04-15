@@ -10,7 +10,7 @@ class ForwardSpecification:
     _src_specification: IOSpecification
 
     dst_module: ProcessingModule
-    dst_output_idx: int
+    dst_input_idx: int
     _dst_specification: IOSpecification
 
     def __init__(self, from_module: ProcessingModule, from_idx: int, to_module: ProcessingModule, to_idx: int):
@@ -21,7 +21,7 @@ class ForwardSpecification:
         self.src_output_idx = from_idx
 
         self.dst_module = to_module
-        self.dst_output_idx = to_idx
+        self.dst_input_idx = to_idx
 
     def validate(self) -> IOValidationResult:
         return validate_specification(self.src_specification, self.dst_specification)
@@ -47,10 +47,10 @@ class ForwardSpecification:
 
             if dst_inputs is None:
                 raise IOValidationError("Destination module did not specify any inputs")
-            if len(dst_inputs) <= self.dst_output_idx:
+            if len(dst_inputs) <= self.dst_input_idx:
                 raise IOValidationError("Index out of range for destination module inputs")
 
-            self._dst_specification = dst_inputs[self.dst_output_idx]
+            self._dst_specification = dst_inputs[self.dst_input_idx]
 
         return self._dst_specification
 
