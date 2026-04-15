@@ -3,7 +3,7 @@ from typing import Iterable
 import numpy as np
 
 from BKGToolkit.DataSpecification import IOSpecification
-from BKGToolkit.exceptions import InputValidationError
+from BKGToolkit.exceptions import IOValidationError
 
 
 class InputValidationResult(Enum):
@@ -43,7 +43,7 @@ def validate(input_specification: IOSpecification, data: Iterable):
     if input_specification.shape:
         return _validate_shape(input_specification, data_asarray)
 
-    raise InputValidationError("Neither dimensions nor shape were specified")
+    raise IOValidationError("Neither dimensions nor shape were specified")
 
 
 def _validate_dimensions(self, data: np.ndarray) -> InputValidationResult:

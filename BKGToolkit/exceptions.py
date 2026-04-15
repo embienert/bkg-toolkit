@@ -1,2 +1,2 @@
-class InputValidationError(Exception):
+class IOValidationError(Exception):
     pass

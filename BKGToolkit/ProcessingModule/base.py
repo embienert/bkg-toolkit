@@ -4,7 +4,7 @@ import numpy as np
 
 from BKGToolkit.DataSpecification import IOSpecification
 from BKGToolkit.Settings import Settings
-from BKGToolkit.exceptions import InputValidationError
+from BKGToolkit.exceptions import IOValidationError
 from .validation import InputValidationResult, validate
 
 
@@ -66,7 +66,7 @@ class ProcessingModule(ABC):
         try:
             input_validations = self._validate_inputs(*inputs_as_array)
         except Exception as validation_error:
-            raise InputValidationError(validation_error)
+            raise IOValidationError(validation_error)
 
         processing_mode = max(*input_validations)
         if processing_mode == InputValidationResult.OK:
@@ -78,14 +78,14 @@ class ProcessingModule(ABC):
             # iteration required
             result = self._process_multiple(*inputs_as_array, validations=input_validations)
         else:
-            raise InputValidationError("One or more single input validation failed")
+            raise IOValidationError("One or more single input validation failed")
 
         # TODO: Result validation?
         return result
 
     def _validate_inputs(self, *inputs: np.ndarray) -> list[InputValidationResult]:
         if len(inputs) != len(self.inputs):
-            raise InputValidationError(f"Expected {len(self.inputs)} inputs, but got {len(inputs)}")
+            raise IOValidationError(f"Expected {len(self.inputs)} inputs, but got {len(inputs)}")
 
         input_specification_map = zip(self.inputs, inputs)
 
@@ -101,7 +101,7 @@ class ProcessingModule(ABC):
         for idx_a in range(len(iterable_inputs)):
             for idx_b in range(idx_a + 1, len(iterable_inputs)):
                 if len(iterable_inputs[idx_a]) != len(iterable_inputs[idx_b]):
-                    raise InputValidationError(f"Size mismatch between input {idx_a+1} and input {idx_b+1}")
+                    raise IOValidationError(f"Size mismatch between input {idx_a + 1} and input {idx_b + 1}")
 
         return validations
 
