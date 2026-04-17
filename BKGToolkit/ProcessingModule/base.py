@@ -83,7 +83,7 @@ class ProcessingModule(ABC):
             # Linear
             result = self._process(*inputs_as_array)
         elif processing_mode == IOValidationResult.REQUIRE_ITERATION and self.allow_broadcast:
-            result = self._process(*inputs_as_array)
+            result = self._process(*inputs_as_array, is_broadcast=True)
         elif processing_mode == IOValidationResult.REQUIRE_ITERATION:
             # iteration required
             result = self._process_multiple(*inputs_as_array, validations=input_validations)
@@ -116,11 +116,12 @@ class ProcessingModule(ABC):
         return validations
 
     @abstractmethod
-    def _process(self, *data: np.ndarray) -> list[Any]:
+    def _process(self, *data: np.ndarray, is_broadcast: bool = False) -> list[Any]:
         """
         Process a single dataset
 
         :param data: validated ndarray containing input data
+        :param is_broadcast: whether the input data requires broadcasting
         :return: processed ndarray
         """
 
