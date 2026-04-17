@@ -53,6 +53,11 @@ class ModuleManager:
         raise ModuleDoesNotExistError(f"No module registered with name {name}")
 
     @staticmethod
+    def reverse_lookup(module: type[ProcessingModule]):
+        idx = list(ModuleManager._processing_modules.values()).index(module)
+        return list(ModuleManager._processing_modules.keys())[idx]
+
+    @staticmethod
     def modules() -> list[type[ProcessingModule]]:
         return list(ModuleManager._processing_modules.values())
 
