@@ -4,3 +4,15 @@ class IOValidationError(Exception):
 
 class ProcessingFlowError(Exception):
     pass
+
+
+class NotModuleError(Exception):
+    pass
+
+
+class DuplicateModuleError(Exception):
+    pass
+
+
+class ModuleDoesNotExistError(Exception):
+    pass
