@@ -2,8 +2,9 @@ from typing import Iterable
 from networkx import DiGraph, is_directed_acyclic_graph, find_cycle, isolates, topological_sort
 
 from BKGToolkit.DataSpecification.ForwardSpecification import ForwardSpecification
+from BKGToolkit.ModuleManager import ModuleManager
 from BKGToolkit.ProcessingModule import ProcessingModule
-from BKGToolkit.exceptions import ProcessingFlowError
+from BKGToolkit.exceptions import ProcessingFlowError, ConfigurationError
 
 
 class ProcessingNode:
@@ -144,3 +145,85 @@ class ProcessingConfiguration:
                 raise ProcessingFlowError(f"Missing ForwardSpecifications for "
                                           f"parameters: {', '.join(map(str, missing_parameters))}")
 
+    def dump(self) -> dict:
+        # TODO: Validate before exporting?
+        export_modules: list[tuple[int, str, dict]] = []
+        export_forwarders: list[dict[str, int]] = []
+
+        module_map: dict[ProcessingModule, int] = {}
+
+        for module_idx, module in enumerate(self.modules):
+            module_settings = module.settings.dump()
+            module_name = ModuleManager.reverse_lookup(module.__class__)
+
+            export_modules.append((
+                module_idx,
+                module_name,
+                module_settings
+            ))
+
+            module_map[module] = module_idx
+
+        for forwarder in self._forwarders:
+            src_module_idx = module_map[forwarder.src_module]
+            dst_module_idx = module_map[forwarder.dst_module]
+
+            export_forwarders.append({
+                "src_module": src_module_idx,
+                "src_idx": forwarder.src_output_idx,
+                "dst_module": dst_module_idx,
+                "dst_idx": forwarder.dst_input_idx,
+            })
+
+        return {
+            "modules": export_modules,
+            "forwarders": export_forwarders
+        }
+
+    def load(self, data: dict):
+        modules: list[ProcessingModule] = []
+        forwarders: list[ForwardSpecification] = []
+
+        module_map: dict[int, ProcessingModule] = {}
+
+        for module_idx, module_name, module_settings in data["modules"]:
+            module_cls = ModuleManager.lookup(module_name)
+
+            module = module_cls(module_settings)
+            module_map[module_idx] = module
+
+            modules.append(module)
+
+        for forwarder in data["forwarders"]:
+            src_module_idx = forwarder["src_module"]
+            src_idx = forwarder["src_idx"]
+
+            dst_module_idx = forwarder["dst_module"]
+            dst_idx = forwarder["dst_idx"]
+
+            try:
+                src_module = module_map[src_module_idx]
+            except KeyError:
+                raise ConfigurationError(f"Could not match idx {src_module_idx} to any module")
+
+            try:
+                dst_module = module_map[dst_module_idx]
+            except KeyError:
+                raise ConfigurationError(f"Could not match idx {dst_module_idx} to any module")
+
+            forwarders.append(ForwardSpecification(
+                src_module,
+                src_idx,
+                dst_module,
+                dst_idx
+            ))
+
+        self._modules = modules
+        self._forwarders = forwarders
+
+    @staticmethod
+    def from_dict(data: dict) -> ProcessingConfiguration:
+        pc = ProcessingConfiguration([], [])
+        pc.load(data)
+
+        return pc

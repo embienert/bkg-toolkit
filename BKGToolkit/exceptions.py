@@ -16,3 +16,7 @@ class DuplicateModuleError(Exception):
 
 class ModuleDoesNotExistError(Exception):
     pass
+
+
+class ConfigurationError(Exception):
+    pass
