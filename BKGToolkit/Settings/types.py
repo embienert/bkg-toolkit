@@ -90,6 +90,16 @@ class StringSetting(Setting[str]):
 
 class BoolSetting(Setting[bool]):
     _settingType = SettingType.BOOLEAN
+    _enables: list[str] = []
+
+    @property
+    def enables(self) -> list[str]:
+        return self._enables
+
+    def __init__(self, default: bool, value: bool | None = None, enables: list[str] = None):
+        super().__init__(default, value)
+
+        self._enables = enables or []
 
 
 class IntSetting(Setting[int]):
