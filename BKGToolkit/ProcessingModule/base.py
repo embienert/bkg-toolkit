@@ -125,7 +125,7 @@ class ProcessingModule(ABC):
         :return: processed ndarray
         """
 
-        pass
+        raise NotImplementedError()
 
     def _process_multiple(self, *data: np.ndarray, validations: list[IOValidationResult] = None) -> list[Iterable[Any]]:
         """
