@@ -70,6 +70,15 @@ class Setting[T](ABC):
     def __repr__(self):
         return self.__str__()
 
+    def __get__(self, instance, owner):
+        return self._value
+
+    def __set__(self, instance, value):
+        self.value = value
+
+    def copy(self):
+        return self.__class__(default=self._default, value=self._value)
+
 
 class StringSetting(Setting[str]):
     _settingType = SettingType.STRING
@@ -105,6 +114,10 @@ class SelectionSetting[T](Setting[T]):
     _settingType = SettingType.SELECTION
     _options: list[T] = []
 
+    @property
+    def options(self) -> list[T]:
+        return self._options
+
     def __init__(self, options: Iterable[T], default: T, value: T | None = None):
         super().__init__(default, value)
 
@@ -115,3 +128,6 @@ class SelectionSetting[T](Setting[T]):
     def validate_value(self, value: T):
         if value not in self._options:
             raise ValueError(f"{value} is not a valid selection.")
+
+    def copy(self):
+        return self.__class__(options=self._options, default=self._default, value=self._value)

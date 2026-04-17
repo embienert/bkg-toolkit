@@ -8,7 +8,7 @@ _VALUE_TYPE = dict[str, Union[*SettingType.types(), "_VALUE_TYPE"]]
 
 
 class Settings(dict[str, Setting[Any] | "Settings"]):
-    __getattr__ = dict.get
+    # __getattr__ = dict.get
     __delattr__ = dict.__delitem__
 
     def __init__(self, values: _CONSTRUCTION_TYPE = None, **kwargs):
@@ -18,6 +18,13 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
         }
 
         super().__init__(all_values)
+
+    def __getattr__(self, item):
+        setting = dict.get(self, item)
+
+        if isinstance(setting, Setting):
+            return setting.__get__(self, self.__class__)
+        return setting
 
     def __setattr__(self, key, value):
         if not isinstance(value, Setting) and not isinstance(value, Settings):
@@ -85,6 +92,12 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
 
     def prettify(self):
         return self.prettify_tree(self)
+
+    def copy(self) -> Settings:
+        return Settings({
+            key: value.copy()
+            for key, value in self.items()
+        })
 
     def __str__(self):
         return self.prettify()

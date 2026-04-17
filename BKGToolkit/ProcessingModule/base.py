@@ -39,11 +39,11 @@ class ProcessingModule(ABC):
     inputs: list[IOSpecification] = None
     outputs: list[IOSpecification] = None
 
-    configuration: Settings | None = None
+    settings: Settings | None = None
 
     allow_broadcast: bool = False
 
-    def __init__(self, settings: dict = None):
+    def __init__(self, **settings):
         self._instance_id = ProcessingModule.__instance_count
         ProcessingModule.__instance_count += 1
 
@@ -63,10 +63,11 @@ class ProcessingModule(ABC):
         if settings is None:
             return
 
-        if self.configuration is None:
+        if self.__class__.settings is None:
             return
 
-        self.configuration.load(settings)
+        self.settings = self.__class__.settings.copy()
+        self.settings.load(settings)
 
     def run(self, *inputs: Iterable) -> list[Any] | list[Iterable[Any]]:
         inputs_as_array = [np.array(data) for data in inputs]
