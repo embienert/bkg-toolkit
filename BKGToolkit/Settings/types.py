@@ -54,6 +54,10 @@ class Setting[T](ABC):
 
     @value.setter
     def value(self, value: T) -> None:
+        if value is None:
+            self._value = self._default
+            return
+
         self.validate_value(value)
 
         self._value = value
