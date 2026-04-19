@@ -31,12 +31,16 @@ class SettingType(Enum):
 
 
 class Setting[T](ABC):
+    _name: str = ""
+    _description: str = ""
+
     _value: T
     _default: T
     _settingType: SettingType
     _persistent: bool
 
-    def __init__(self, default: T, value: T | None = None, persistent: bool = True):
+    def __init__(self, default: T, value: T | None = None, persistent: bool = True,
+                 name: str = "", description: str = ""):
         if default is None:
             raise ValueError("default value must not be None.")
         self._default = default
@@ -47,6 +51,8 @@ class Setting[T](ABC):
             self._value = self._default
 
         self._persistent = persistent
+        self._name = name
+        self._description = description
 
     @property
     def default(self) -> T:
@@ -104,8 +110,9 @@ class BoolSetting(Setting[bool]):
     def enables(self) -> list[str]:
         return self._enables
 
-    def __init__(self, default: bool, value: bool | None = None, enables: list[str] = None):
-        super().__init__(default, value)
+    def __init__(self, default: bool, value: bool | None = None, enables: list[str] = None,
+                 name: str = "", description: str = ""):
+        super().__init__(default, value, name=name, description=description)
 
         self._enables = enables or []
 
@@ -126,8 +133,9 @@ class ListSetting[T](Setting[list[T]]):
     def dtype(self) -> type | None:
         return self._dtype
 
-    def __init__(self, default: list[T], value: list[T] = None, dtype: type = None, persistent: bool = True):
-        super().__init__(default, value, persistent)
+    def __init__(self, default: list[T], value: list[T] = None, dtype: type = None, persistent: bool = True,
+                 name: str = "", description: str = ""):
+        super().__init__(default, value, persistent, name=name, description=description)
         self._dtype = dtype
 
     def validate_value(self, value: list[T]):
@@ -149,8 +157,9 @@ class SelectionSetting[T](Setting[T]):
     def options(self) -> list[T]:
         return self._options
 
-    def __init__(self, options: Iterable[T], default: T, value: T | None = None, persistent: bool = True):
-        super().__init__(default, value, persistent)
+    def __init__(self, options: Iterable[T], default: T, value: T | None = None, persistent: bool = True,
+                 name: str = "", description: str = ""):
+        super().__init__(default, value, persistent, name=name, description=description)
 
         self._options = list(options)
         if not self._options:
@@ -172,7 +181,11 @@ class FilesSetting(Setting[list[str]]):
     def allow_multiple(self) -> bool:
         return self._allow_multiple
 
-    def __init__(self, default: list[str], value: list[str], allow_multiple: bool, persistent: bool = False):
-        super().__init__(default, value, persistent)
+    def __init__(self, default: list[str], value=None, allow_multiple: bool = False, persistent: bool = False,
+                 name: str = "", description: str = ""):
+        if value is None:
+            value = []
+
+        super().__init__(default, value, persistent, name=name, description=description)
 
         self._allow_multiple = allow_multiple
