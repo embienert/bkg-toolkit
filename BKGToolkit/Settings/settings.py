@@ -57,6 +57,9 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
                 warn(f"Encountered item {key} while loading settings, which was not specified in struct.")
 
             setting = self.get(key)
+            if not setting.persistent:
+                continue
+
             if isinstance(setting, Setting):
                 setting.value = value
             elif isinstance(setting, Settings):
@@ -70,6 +73,9 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
         output = {}
         for key, value in self.items():
             setting = self.get(key)
+            if not setting.persistent:
+                continue
+
             if isinstance(setting, Setting):
                 output[key] = setting.value
             elif isinstance(setting, Settings):

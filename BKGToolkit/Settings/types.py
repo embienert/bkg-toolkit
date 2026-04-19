@@ -33,8 +33,9 @@ class Setting[T](ABC):
     _value: T
     _default: T
     _settingType: SettingType
+    _persistent: bool
 
-    def __init__(self, default: T, value: T | None = None):
+    def __init__(self, default: T, value: T | None = None, persistent: bool = True):
         if default is None:
             raise ValueError("default value must not be None.")
         self._default = default
@@ -43,6 +44,8 @@ class Setting[T](ABC):
             self._value = value
         else:
             self._value = self._default
+
+        self._persistent = persistent
 
     @property
     def default(self) -> T:
@@ -62,11 +65,18 @@ class Setting[T](ABC):
 
         self._value = value
 
+    @property
+    def persistent(self) -> bool:
+        return self._persistent
+
     def validate_value(self, value: T):
         exp_type = self._settingType.get_type()
         
         if not isinstance(value, exp_type):
             raise TypeError(f"'{value}' is not a valid {exp_type.__name__}")
+
+    def copy(self):
+        return self.__class__(default=self._default, value=self._value)
 
     def __str__(self):
         return f"Setting({self._settingType.name}, value: {self._value}, default: {self._default})"
@@ -79,9 +89,6 @@ class Setting[T](ABC):
 
     def __set__(self, instance, value):
         self.value = value
-
-    def copy(self):
-        return self.__class__(default=self._default, value=self._value)
 
 
 class StringSetting(Setting[str]):
