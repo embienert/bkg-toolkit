@@ -57,8 +57,6 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
                 warn(f"Encountered item {key} while loading settings, which was not specified in struct.")
 
             setting = self.get(key)
-            if not setting.persistent:
-                continue
 
             if isinstance(setting, Setting):
                 setting.value = value
@@ -69,11 +67,11 @@ class Settings(dict[str, Setting[Any] | "Settings"]):
                 raise ValueError(f"Encountered unexpected setting type '{type(setting)}' with key {key} while loading "
                                  f"settings.")
 
-    def dump(self) -> _VALUE_TYPE:
+    def dump(self, ignore_persistent: bool = False) -> _VALUE_TYPE:
         output = {}
         for key, value in self.items():
             setting = self.get(key)
-            if not setting.persistent:
+            if not setting.persistent and not ignore_persistent:
                 continue
 
             if isinstance(setting, Setting):
