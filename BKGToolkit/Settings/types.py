@@ -10,6 +10,7 @@ class SettingType(Enum):
     FLOAT = 3
     LIST = 4
     SELECTION = 5
+    FILE = 6
 
     def get_type(self) -> type:
         if self == SettingType.STRING:
@@ -119,16 +120,25 @@ class FloatSetting(Setting[float]):
 
 class ListSetting[T](Setting[list[T]]):
     _settingType = SettingType.LIST
+    _dtype: type = None
 
-    def validate_value(self, value: list[T], dtype: Optional[type] = None):
+    @property
+    def dtype(self) -> type | None:
+        return self._dtype
+
+    def __init__(self, default: list[T], value: list[T] = None, dtype: type = None, persistent: bool = True):
+        super().__init__(default, value, persistent)
+        self._dtype = dtype
+
+    def validate_value(self, value: list[T]):
         super().validate_value(value)
 
-        if not dtype:
+        if not self._dtype:
             return
 
         for idx, item in enumerate(value):
-            if not isinstance(item, dtype):
-                raise TypeError(f"Expected list of {dtype}, but item '{item}' at index {idx} is of type {type(item)}.")
+            if not isinstance(item, self._dtype):
+                raise TypeError(f"Expected list of {self._dtype}, but item '{item}' at index {idx} is of type {type(item)}.")
 
 
 class SelectionSetting[T](Setting[T]):
@@ -139,8 +149,8 @@ class SelectionSetting[T](Setting[T]):
     def options(self) -> list[T]:
         return self._options
 
-    def __init__(self, options: Iterable[T], default: T, value: T | None = None):
-        super().__init__(default, value)
+    def __init__(self, options: Iterable[T], default: T, value: T | None = None, persistent: bool = True):
+        super().__init__(default, value, persistent)
 
         self._options = list(options)
         if not self._options:
@@ -152,3 +162,17 @@ class SelectionSetting[T](Setting[T]):
 
     def copy(self):
         return self.__class__(options=self._options, default=self._default, value=self._value)
+
+
+class FilesSetting(Setting[list[str]]):
+    _settingType = SettingType.LIST
+    _allow_multiple = True
+
+    @property
+    def allow_multiple(self) -> bool:
+        return self._allow_multiple
+
+    def __init__(self, default: list[str], value: list[str], allow_multiple: bool, persistent: bool = False):
+        super().__init__(default, value, persistent)
+
+        self._allow_multiple = allow_multiple
