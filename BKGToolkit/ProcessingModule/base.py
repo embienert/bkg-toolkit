@@ -2,10 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Any
 import numpy as np
 
-from BKGToolkit.DataSpecification import IOSpecification
+from BKGToolkit.DataSpecification import IOSpecification, IOValidationResult
 from BKGToolkit.Settings import Settings
 from BKGToolkit.exceptions import IOValidationError
-from BKGToolkit.DataSpecification.validation import IOValidationResult, validate_data
 
 
 class ProcessingModuleSpecification:
@@ -69,43 +68,44 @@ class ProcessingModule(ABC):
         self.settings = self.__class__.settings.copy()
         self.settings.load(settings)
 
-    def run(self, *inputs: Iterable) -> list[Any] | list[Iterable[Any]]:
-        inputs_as_array = [np.array(data) for data in inputs]
-
+    def run(self, *inputs: Any) -> list[Any] | list[Iterable[Any]]:
         # Validate input data
         try:
-            input_validations = self._validate_inputs(*inputs_as_array)
+            input_validations = self._validate_inputs(*inputs)
         except Exception as validation_error:
             raise IOValidationError(validation_error)
+
+        prepared_inputs = self._prepare_inputs(inputs)
 
         processing_mode = max([IOValidationResult.OK, *input_validations])
         if processing_mode == IOValidationResult.OK:
             # Linear
-            result = self._process(*inputs_as_array)
+            result = self._process(*prepared_inputs)
         elif processing_mode == IOValidationResult.REQUIRE_ITERATION and self.allow_broadcast:
-            result = self._process(*inputs_as_array, is_broadcast=True)
+            result = self._process(*prepared_inputs, is_broadcast=True)
         elif processing_mode == IOValidationResult.REQUIRE_ITERATION:
             # iteration required
-            result = self._process_multiple(*inputs_as_array, validations=input_validations)
+            result = self._process_multiple(*prepared_inputs, validations=input_validations)
         else:
             raise IOValidationError("One or more single input validation failed")
 
         # TODO: Result validation?
         return result
 
-    def _validate_inputs(self, *inputs: np.ndarray) -> list[IOValidationResult]:
-        if len(inputs) != len(self.inputs):
-            raise IOValidationError(f"Expected {len(self.inputs)} inputs, but got {len(inputs)}")
+    def _prepare_inputs(self, values: Iterable[Any]) -> list[np.ndarray | Any]:
+        return [specification.prepare(data) for specification, data in zip(self.inputs, values)]
 
-        input_specification_map = zip(self.inputs, inputs)
+    def _validate_inputs(self, *data: Any) -> list[IOValidationResult]:
+        if len(data) != len(self.inputs):
+            raise IOValidationError(f"Expected {len(self.inputs)} inputs, but got {len(data)}")
 
-        validations = [validate_data(specification, data) for specification, data in input_specification_map]
+        validations = [specification.validate_data(data) for specification, data in zip(self.inputs, data)]
 
         # Get inputs that must be iterated
         iterable_inputs = []
-        for input_data, validation_result in zip(inputs, validations):
-            if validation_result.is_iterable():
-                iterable_inputs.append(input_data)
+        for data, validation_result in zip(data, validations):
+            if validation_result.require_iteration():
+                iterable_inputs.append(data)
 
         # Check for size mismatch between iterable inputs
         for idx_a in range(len(iterable_inputs)):
@@ -116,7 +116,7 @@ class ProcessingModule(ABC):
         return validations
 
     @abstractmethod
-    def _process(self, *data: np.ndarray, is_broadcast: bool = False) -> list[Any]:
+    def _process(self, *data: Any, is_broadcast: bool = False) -> list[Any]:
         """
         Process a single dataset
 
@@ -127,7 +127,7 @@ class ProcessingModule(ABC):
 
         raise NotImplementedError()
 
-    def _process_multiple(self, *data: np.ndarray, validations: list[IOValidationResult] = None) -> list[Iterable[Any]]:
+    def _process_multiple(self, *data: Any, validations: list[IOValidationResult] = None) -> list[Iterable[Any]]:
         """
         Process multiple datasets. Only required if broadcasting is not possible
 
@@ -145,7 +145,7 @@ class ProcessingModule(ABC):
 
         return list(zip(*results))
 
-    def _stack_args(self, *args: np.ndarray, validations: list[IOValidationResult] = None) -> list[np.ndarray]:
+    def _stack_args(self, *args: Any, validations: list[IOValidationResult] = None) -> list[Any]:
         if validations is None:
             validations = self._validate_inputs(*args)
 
@@ -153,12 +153,12 @@ class ProcessingModule(ABC):
 
         arg_stack = []
 
-        length = max([len(arg) for (arg, validation) in zip(args, validations) if validation.is_iterable()])
+        length = max([len(arg) for (arg, validation) in zip(args, validations) if validation.require_iteration()])
         for (arg, validation) in zip(args, validations):
-            if validation.is_iterable():
+            if validation.require_iteration():
                 arg_stack.append(arg)
             else:
-                arg_stack.append(np.full((length, *arg.shape), arg))
+                arg_stack.append([arg for _ in range(length)])
 
         return list(zip(*arg_stack))
 

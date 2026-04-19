@@ -1,5 +1,4 @@
-from BKGToolkit.DataSpecification import IOSpecification
-from BKGToolkit.DataSpecification.validation import IOValidationResult, validate_specification
+from BKGToolkit.DataSpecification.IOSpecification import IOSpecification, IOValidationResult
 from BKGToolkit.ProcessingModule import ProcessingModule
 from BKGToolkit.exceptions import IOValidationError
 
@@ -24,7 +23,7 @@ class ForwardSpecification:
         self.dst_input_idx = to_idx
 
     def validate(self) -> IOValidationResult:
-        return validate_specification(self.src_specification, self.dst_specification)
+        return self.src_specification.validate_specification(self.dst_specification)
 
     @property
     def src_specification(self) -> IOSpecification:
